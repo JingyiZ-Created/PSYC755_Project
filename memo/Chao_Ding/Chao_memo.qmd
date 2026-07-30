@@ -1,0 +1,181 @@
+---
+title: "Communication Apprehension and Public Transportation Use"
+subtitle: "Executable Research Memo Analysis"
+author: "Chao Ding"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: false
+    embed-resources: true
+jupyter: python3
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: false
+---
+
+## Research question
+Core-question memo: Does communication apprehension predict public transit use?
+This memo answers a single question: does communication apprehension (CA) predict public transit (PT) use or ride-share (RS) use more accurately? Using the full merged sample (N = 240), I fit two simple linear regressions with the same predictor: PT = b0 + b1(CA12) and RS = b0 + b1(CA12), where CA12 is the sum of all 12 PRCA Likert items (Q1-Q6 group-discussion, Q13-Q18 interpersonal). PT and RS are each self-reported use frequency over the last three months, coded 0-4 (Never to 8+ days). I compared the two models on root mean squared error (RMSE): the model with the lower RMSE fits its outcome more accurately. Independent variable: CA12, the summed apprehension score (continuous). Dependent variables: PT and RS, each use frequency (0-4).
+Ride-share is the more predictable outcome: RMSE = 1.228 for the RS model vs. 1.395 for the PT model -- CA12 leaves less error when predicting RS. Both slopes are negative and significant (PT: b1 = -0.134, R² = .067, p < .001; RS: b1 = -0.112, R² = .061, p < .001), so higher apprehension predicts less use of both modes. PT actually explains slightly more of the variance (R² = .067 vs. .061), but RS still wins on RMSE because its outcome has less overall spread to begin with (fewer respondents report heavy ride-share use), so the same size of unexplained variation looks smaller in absolute error terms.
+R² and RMSE gave different "winners" here: R² asks how much variance CA12 explains relative to each outcome's own spread; RMSE asks how big the leftover error is in raw units. Framed around RMSE, RS is the better-predicted mode, but both relationships are modest (R² under .07). The boxplots tell the same directional story as the regression -- Low CA highest, Moderate and High CA close together for both modes.
+
+
+```
+Which mode does communication apprehension (CA) predict more accurately:
+public transit (PT) or ride-share (RS)?
+
+Models (simple linear regression, one predictor each):
+    PT = b0 + b1 * CA12
+    RS = b0 + b1 * CA12
+
+Independent variable: CA12 -- continuous sum of the 12 PRCA Likert items
+    (Q1-Q6 group-discussion + Q13-Q18 interpersonal).
+Dependent variables: PT and RS -- self-reported use frequency in the last
+    3 months, each recoded 0-4 (Never ... 8+ days).
+
+Model comparison metric: RMSE (lower = more accurately predicted).
+```
+
+```{python}
+import pandas as pd
+import numpy as np
+from scipy import stats
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+df = pd.read_csv('clean_merged.csv')
+
+prca_items = ['Q1_n','Q2_n','Q3_n','Q4_n','Q5_n','Q6_n',
+              'Q13_n','Q14_n','Q15_n','Q16_n','Q17_n','Q18_n']
+df['CA12'] = df[prca_items].sum(axis=1, skipna=False)
+
+order_map = {'Never': 0, '0-1 days a month': 1, '2-4 days a month': 2,
+             '4-8 days a month': 3, '8 or more days a month': 4}
+df['PT'] = df['Q26'].map(order_map)
+df['RS'] = df['Q28'].map(order_map)
+
+d_pt = df.dropna(subset=['CA12', 'PT']).copy()
+d_rs = df.dropna(subset=['CA12', 'RS']).copy()
+print("N (PT model):", len(d_pt), " N (RS model):", len(d_rs))
+
+res_pt = stats.linregress(d_pt['CA12'], d_pt['PT'])
+pred_pt = res_pt.intercept + res_pt.slope * d_pt['CA12']
+rmse_pt = np.sqrt(np.mean((d_pt['PT'] - pred_pt) ** 2))
+print(f"PT = {res_pt.intercept:.3f} + {res_pt.slope:.3f}*CA12 | "
+      f"R2={res_pt.rvalue**2:.4f}, p={res_pt.pvalue:.5f}, RMSE={rmse_pt:.4f}")
+
+res_rs = stats.linregress(d_rs['CA12'], d_rs['RS'])
+pred_rs = res_rs.intercept + res_rs.slope * d_rs['CA12']
+rmse_rs = np.sqrt(np.mean((d_rs['RS'] - pred_rs) ** 2))
+print(f"RS = {res_rs.intercept:.3f} + {res_rs.slope:.3f}*CA12 | "
+      f"R2={res_rs.rvalue**2:.4f}, p={res_rs.pvalue:.5f}, RMSE={rmse_rs:.4f}")
+
+winner = "RS" if rmse_rs < rmse_pt else "PT"
+print(f"\nLower RMSE (more predictable): {winner}")
+```
+
+```{python}
+np.random.seed(0)
+fig, axes = plt.subplots(1, 3, figsize=(11, 3.3))
+for ax, d, res, dv, color, label in [
+    (axes[0], d_pt, res_pt, 'PT', '#4f8f6b', 'Public Transit (PT)'),
+    (axes[1], d_rs, res_rs, 'RS', '#c76b4a', 'Ride-Share (RS)'),
+]:
+    x = d['CA12']; y = d[dv]
+    jitter_y = y + np.random.uniform(-0.12, 0.12, size=len(y))
+    ax.scatter(x, jitter_y, alpha=0.35, s=14, color=color)
+    xs = np.linspace(x.min(), x.max(), 100)
+    ax.plot(xs, res.intercept + res.slope * xs, color='black', linewidth=2)
+    ax.set_title(f"{label}\nR\u00b2 = {res.rvalue**2:.3f}", fontsize=11)
+    ax.set_xlabel('CA12', fontsize=10)
+    ax.set_ylabel('Use freq. (0-4)', fontsize=10)
+
+ax3 = axes[2]
+bars = ax3.bar(['PT', 'RS'], [rmse_pt, rmse_rs], color=['#4f8f6b', '#c76b4a'], width=0.5)
+for b, v in zip(bars, [rmse_pt, rmse_rs]):
+    ax3.text(b.get_x() + b.get_width() / 2, v + 0.02, f"{v:.3f}", ha='center', fontsize=10)
+ax3.set_title('RMSE (lower = better)', fontsize=11)
+ax3.set_ylim(0, max(rmse_pt, rmse_rs) * 1.3)
+
+plt.tight_layout()
+plt.savefig('combined_fig.png', dpi=200)
+fig
+```
+
+```{python}
+q1, q2 = df['CA12'].quantile([1/3, 2/3])
+def ca_group(x):
+    if x <= q1: return 'Low CA'
+    elif x <= q2: return 'Moderate CA'
+    else: return 'High CA'
+
+d_pt['CA_group'] = d_pt['CA12'].apply(ca_group)
+d_rs['CA_group'] = d_rs['CA12'].apply(ca_group)
+
+order = ['Low CA', 'Moderate CA', 'High CA']
+colors = ['#8fbf9f', '#f2c66d', '#e07a5f']
+fig2, axes2 = plt.subplots(1, 2, figsize=(9, 4))
+for ax, d, dv, title in [
+    (axes2[0], d_pt, 'PT', 'Public Transit (PT) by CA Group'),
+    (axes2[1], d_rs, 'RS', 'Ride-Share (RS) by CA Group'),
+]:
+    data = [d.loc[d.CA_group == g, dv] for g in order]
+    bp = ax.boxplot(data, tick_labels=order, patch_artist=True)
+    for patch, c in zip(bp['boxes'], colors):
+        patch.set_facecolor(c)
+        patch.set_alpha(0.85)
+    ax.set_title(title, fontsize=12)
+    ax.set_ylabel('Use frequency (0-4)')
+plt.tight_layout()
+plt.savefig('boxplots_pt_rs_large.png', dpi=200)
+fig
+```
+```{python}
+q1, q2 = df['CA12'].quantile([1/3, 2/3])
+
+def ca_group(x):
+    if x <= q1: return 'Low CA'
+    elif x <= q2: return 'Moderate CA'
+    else: return 'High CA'
+
+df['CA_group'] = df['CA12'].apply(ca_group)
+
+order = ['Low CA', 'Moderate CA', 'High CA']
+data_pt = [df.loc[df.CA_group == g, 'PT'] for g in order]
+
+fig, ax = plt.subplots(figsize=(7, 5))
+bp = ax.boxplot(data_pt, tick_labels=order, patch_artist=True, widths=0.5)
+
+colors = ['#8fbf9f', '#f2c66d', '#e07a5f']
+for patch, c in zip(bp['boxes'], colors):
+    patch.set_facecolor(c)
+    patch.set_alpha(0.85)
+
+ax.set_title('Public Transit Use Frequency by CA Group')
+ax.set_xlabel('Communication Apprehension group')
+plt.tight_layout()
+plt.savefig('boxplot_PT.png', dpi=200)
+fig
+```
+```{python}
+d_rs = df.dropna(subset=['CA_group', 'RS'])
+data_rs = [d_rs.loc[d_rs.CA_group == g, 'RS'] for g in order]
+
+fig, ax = plt.subplots(figsize=(7, 5))
+bp = ax.boxplot(data_rs, tick_labels=order, patch_artist=True, widths=0.5)
+for patch, c in zip(bp['boxes'], colors):
+    patch.set_facecolor(c)
+    patch.set_alpha(0.85)
+
+ax.set_title('Ride-Share Use Frequency by CA Group', fontsize=16)
+ax.set_xlabel('Communication Apprehension group', fontsize=12)
+ax.set_yticks([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4])
+ax.tick_params(labelsize=11)
+plt.tight_layout()
+plt.savefig('RideShare_Boxplot_by_CA_Group.png', dpi=200)
+fig
+```
