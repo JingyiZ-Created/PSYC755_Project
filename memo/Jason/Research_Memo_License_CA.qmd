@@ -1,0 +1,144 @@
+---
+title: "Reproducible Science"
+subtitle: "A Research Memorandum: Driver's License Status and Communication Apprehension"
+author: "JIANGRAN GU"
+date: "2026-07-30"
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+jupyter: python3
+---
+
+## Researcher
+
+**Researcher:** JIANGRAN GU
+**Date:** July 30, 2026
+**JIANGRAN GU:** Does group communication apprehension predict whether, or how often, respondents use public transportation?
+**This memo's sub-question:** Does holding a driver's license (Q20) predict communication apprehension (CA)?
+
+## Research Or Analytical Question
+
+Does whether a respondent **holds a driver's license** (Q20: "Do you have a license to drive a car?", Yes/No) predict their level of **communication apprehension (CA)**, measured as the sum of 12 Likert-scale items (Q1–Q6: group-discussion apprehension; Q13–Q18: dyadic/interpersonal apprehension) from the PRCA-style instrument in `PRCAQualtricsExport_FileC.csv`?
+
+## Data & Method
+
+```{python}
+#| label: setup
+import pandas as pd
+import numpy as np
+from scipy import stats
+import matplotlib.pyplot as plt
+
+df = pd.read_csv("PRCAQualtricsExport_FileC.csv")
+
+# 12 Communication Apprehension items:
+# Q1-Q6  = group discussion apprehension
+# Q13-Q18 = dyadic / interpersonal conversation apprehension
+ca_items = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6",
+            "Q13", "Q14", "Q15", "Q16", "Q17", "Q18"]
+
+# 5-point ordinal Likert recode (Strongly disagree = 1 ... Strongly agree = 5)
+likert_map = {
+    "Strongly disagree": 1,
+    "Somewhat disagree": 2,
+    "Neither agree nor disagree": 3,
+    "Somewhat agree": 4,
+    "Strongly agree": 5,
+}
+
+for c in ca_items:
+    df[c + "_n"] = df[c].map(likert_map)
+
+# Composite CA score = ordinal sum of all 12 items (per team's agreed coding
+# scheme -- items are summed as-is with no reverse-scoring)
+df["CA_total"] = df[[c + "_n" for c in ca_items]].sum(axis=1, skipna=False)
+
+# Analytic sample: complete CA items + non-missing license status (Q20)
+sub = df.dropna(subset=["CA_total", "Q20"]).copy()
+sub["Q20"] = pd.Categorical(sub["Q20"], categories=["No", "Yes"])
+
+print(f"Analytic N = {len(sub)}")
+print(sub["Q20"].value_counts())
+```
+
+CA items were recoded from text labels to a 1–5 ordinal scale (Strongly disagree = 1 → Strongly agree = 5) and summed across all 12 items to create a composite `CA_total` score (possible range 12–60). Respondents missing any of the 12 CA items or missing Q20 were listwise-deleted, leaving an analytic sample of N = 163 (138 "Yes" license holders, 25 "No").
+
+Group means were compared with an **independent-samples t-test**, with Levene's test used to check the equal-variance assumption.
+
+## Answer, Response, + Summary of Results
+
+```{python}
+#| label: descriptives
+desc = sub.groupby("Q20", observed=True)["CA_total"].agg(
+    n="count", mean="mean", sd="std", median="median"
+).round(2)
+desc
+```
+
+```{python}
+#| label: ttest
+yes = sub.loc[sub["Q20"] == "Yes", "CA_total"]
+no = sub.loc[sub["Q20"] == "No", "CA_total"]
+
+lev_stat, lev_p = stats.levene(yes, no)
+print(f"Levene's test: F = {lev_stat:.3f}, p = {lev_p:.3f}")
+
+# Levene's test is non-significant -> equal variances assumed -> Student's t
+t_stat, p_val = stats.ttest_ind(yes, no, equal_var=True)
+df_t = len(yes) + len(no) - 2
+
+pooled_sd = np.sqrt(
+    ((len(yes) - 1) * yes.var() + (len(no) - 1) * no.var()) / df_t
+)
+cohens_d = (yes.mean() - no.mean()) / pooled_sd
+
+print(f"t({df_t}) = {t_stat:.3f}, p = {p_val:.3f}")
+print(f"Cohen's d = {cohens_d:.3f}")
+```
+
+```{python}
+#| label: fig-ca-by-license
+#| fig-cap: "Communication Apprehension (CA) total score by driver's license status"
+
+fig, ax = plt.subplots(figsize=(6, 4.5))
+
+groups = ["No", "Yes"]
+data_by_group = [sub.loc[sub["Q20"] == g, "CA_total"] for g in groups]
+
+bp = ax.boxplot(data_by_group, tick_labels=[f"{g}\n(n={len(d)})" for g, d in zip(groups, data_by_group)],
+                 patch_artist=True, widths=0.5)
+for patch, color in zip(bp["boxes"], ["#f4a582", "#92c5de"]):
+    patch.set_facecolor(color)
+
+# jittered raw points
+rng = np.random.default_rng(42)
+for i, d in enumerate(data_by_group, start=1):
+    x = rng.normal(i, 0.04, size=len(d))
+    ax.scatter(x, d, alpha=0.4, color="black", s=15)
+
+ax.set_xlabel("Has a driver's license? (Q20)")
+ax.set_ylabel("Communication Apprehension total score (12–60)")
+ax.set_title("CA Total Score by Driver's License Status")
+plt.tight_layout()
+plt.show()
+```
+
+Using `PRCAQualtricsExport_FileC.csv`, respondents **without** a driver's license reported a slightly **higher** mean CA score (M = 37.40, SD = 2.53, n = 25) than respondents **with** a license (M = 36.38, SD = 2.55, n = 138). Levene's test indicated the equal-variance assumption was reasonable (F = 0.02, p = .881), so a Student's independent-samples t-test was used. The difference was **not statistically significant at the conventional α = .05 level**, t(161) = -1.83, p = .069, although it approached significance at the α = .10 level. The effect size was small-to-moderate (Cohen's d = -0.40), with the no-license group trending toward higher apprehension.
+
+**Conclusion:** From these data, holding a driver's license does **not** significantly predict communication apprehension at the .05 threshold, though there is a marginal (p < .10), small-to-moderate trend suggesting non-license-holders may report somewhat higher CA. This should be treated as suggestive rather than conclusive evidence.
+
+## What questions or uncertainties remain?
+
+- The composite `CA_total` was created by **summing raw ordinal codes without reverse-scoring** the positively-worded items (e.g., Q2, Q4, Q6, Q14, Q16, Q17), per the team's agreed coding approach. A standard PRCA-style reverse-scored composite might change the magnitude (and possibly the direction) of the group difference — this is worth checking as a robustness test.
+- The "No license" subgroup is small (n = 25), which limits statistical power; the marginal p-value (.069) could reflect low power as much as a true null effect.
+- Does license status relate differently to the **group-discussion** (Q1–Q6) vs. **dyadic/interpersonal** (Q13–Q18) CA subscales separately, rather than only the combined total?
+- How does license status intersect with the team's core question — does CA (or license status) predict actual public-transportation use (Q26–Q27) or ride-share use (Q28–Q29)? A follow-up regression/mediation analysis could connect this sub-question back to the group's shared research question.
+- Possible confounds (age, car access [Q21], urban vs. rural location) were not controlled for here and could be examined in a multivariate model.
+
+---
+*Data source: `PRCAQualtricsExport_FileC.csv`, PRCA-style survey administered as part of Psych 755, University of Wisconsin–Madison. Variable definitions per `data_dictionary.csv`.*
