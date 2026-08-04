@@ -1,7 +1,7 @@
 ---
 title: "Model Comparison: Communication Apprehension and Public Transportation Use"
 author: "Yuhao Wang"
-date: "2026.7.30"
+date: "2026.8.1"
 output: 
   html_document:
     toc: true
@@ -21,17 +21,25 @@ cleaned_data <- read_csv(here("clean_data", "cleaned_prca_data.csv"))
 
 Which of the following models gives the lowest RMSE for predicting public transportation use frequency?
 
-1. PTRS = b0 + b1*CA12 + e
+$$PTRS = \beta_0 + \beta_1 \times CA_{12} + \epsilon \tag{1}$$
 
-2. PTRS = b0 + b1*CAg + b2*CAi + e  
+$$PTRS = \beta_0 + \beta_1 \times CA_{group} + \beta_2 \times CA_{interpersonal} + \epsilon \tag{2}$$
 
-3. PTRS = b0 + b1*CAg + b2*CAi + b3*(CAg * CAi) + e
+$$PTRS = \beta_0 + \beta_1 \times CA_{group} + \beta_2 \times CA_{interpersonal} + \beta_3 \times (CA_{group} \times CA_{interpersonal}) + \epsilon \tag{3}$$
+
+**Equation Descriptions:**
+
+- **Equation (1):** Simple linear regression model using total communication apprehension (CA12) as the sole predictor of public transportation use frequency. This model assumes a linear relationship between overall communication apprehension and transportation behavior.
+
+- **Equation (2):** Multiple regression model that separates communication apprehension into two dimensions: group communication apprehension (CA_group) and interpersonal communication apprehension (CA_interpersonal). This model allows for differential effects of these two dimensions on public transportation use.
+
+- **Equation (3):** Multiple regression model with an interaction term between group and interpersonal communication apprehension. This model tests whether the effect of one dimension of communication apprehension on transportation use depends on the level of the other dimension.
 
 Where:
 - PTRS = Public Transportation Use Frequency (public_trans_freq)
 - CA12 = Total Communication Apprehension (prca_total, 12 items)
-- CAg = Group Communication Apprehension (Q1-Q6)
-- CAi = Interpersonal Communication Apprehension (Q13-Q18)
+- CA_group = Group Communication Apprehension (Q1-Q6)
+- CA_interpersonal = Interpersonal Communication Apprehension (Q13-Q18)
 
 # Answer, Response, + Summary of Results
 
@@ -84,8 +92,10 @@ descriptive_stats <- analysis_data %>%
 |----------|------|-----|-------|
 | Public Transportation Frequency (PTRS) | `r round(descriptive_stats$ptrs_mean, 2)` | `r round(descriptive_stats$ptrs_sd, 2)` | `r descriptive_stats$ptrs_min` - `r descriptive_stats$ptrs_max` |
 | Total Communication Apprehension (CA12) | `r round(descriptive_stats$ca12_mean, 2)` | `r round(descriptive_stats$ca12_sd, 2)` | `r descriptive_stats$ca12_min` - `r descriptive_stats$ca12_max` |
-| Group Communication Apprehension (CAg) | `r round(descriptive_stats$cag_mean, 2)` | `r round(descriptive_stats$cag_sd, 2)` | 6 - 30 |
-| Interpersonal Communication Apprehension (CAi) | `r round(descriptive_stats$cai_mean, 2)` | `r round(descriptive_stats$cai_sd, 2)` | 6 - 30 |
+| Group Communication Apprehension (CA_group) | `r round(descriptive_stats$cag_mean, 2)` | `r round(descriptive_stats$cag_sd, 2)` | 6 - 30 |
+| Interpersonal Communication Apprehension (CA_interpersonal) | `r round(descriptive_stats$cai_mean, 2)` | `r round(descriptive_stats$cai_sd, 2)` | 6 - 30 |
+
+: Descriptive statistics for key variables in the analysis. {#tbl-descriptive-stats}
 
 ## Model Comparison
 
@@ -110,7 +120,7 @@ model3_r2 <- summary(model3)$r.squared
 
 # Create comparison table
 model_comparison <- tibble(
-  Model = c("Model 1: CA12 only", "Model 2: CAg + CAi", "Model 3: CAg + CAi + Interaction"),
+  Model = c("Model 1", "Model 2", "Model 3"),
   RMSE = c(model1_rmse, model2_rmse, model3_rmse),
   R_squared = c(model1_r2, model2_r2, model3_r2)
 ) %>%
@@ -124,6 +134,8 @@ model_comparison <- tibble(
 | `r model_comparison$Model[1]` | `r round(model_comparison$RMSE[1], 4)` | `r round(model_comparison$R_squared[1], 4)` |
 | `r model_comparison$Model[2]` | `r round(model_comparison$RMSE[2], 4)` | `r round(model_comparison$R_squared[2], 4)` |
 | `r model_comparison$Model[3]` | `r round(model_comparison$RMSE[3], 4)` | `r round(model_comparison$R_squared[3], 4)` |
+
+: RMSE and R² comparison across the three regression models. Models are sorted by RMSE (lowest is best). {#tbl-model-comparison}
 
 **Best Model:** `r model_comparison$Model[1]` with RMSE = `r round(model_comparison$RMSE[1], 4)`
 
@@ -149,7 +161,11 @@ add_stars <- function(p) {
 | Intercept | `r round(model1_tidy$estimate[1], 3)` | `r round(model1_tidy$std.error[1], 3)` | `r round(model1_tidy$statistic[1], 2)` | `r format(model1_tidy$p.value[1], scientific = TRUE, digits = 4)` `r add_stars(model1_tidy$p.value[1])` |
 | CA12 | `r round(model1_tidy$estimate[2], 3)` | `r round(model1_tidy$std.error[2], 3)` | `r round(model1_tidy$statistic[2], 2)` | `r format(model1_tidy$p.value[2], scientific = TRUE, digits = 4)` `r add_stars(model1_tidy$p.value[2])` |
 
+: Regression coefficients for Model 1 (CA12 only). Significance stars: * p < 0.05, ** p < 0.01, *** p < 0.001. {#tbl-model1}
+
 **Model Fit:** R² = `r round(model1_r2, 4)`, RMSE = `r round(model1_rmse, 4)`
+
+**Interpretation:** Model 1 uses total communication apprehension (CA12) as a single predictor. The R² value of `r round(model1_r2, 4)` indicates that approximately `r round(model1_r2 * 100, 1)`% of the variance in public transportation use frequency can be explained by overall communication apprehension. This suggests a relatively weak but statistically significant relationship between communication apprehension and transportation behavior.
 
 ### Model 2: Multiple Regression (CAg + CAi)
 
@@ -161,10 +177,14 @@ model2_glance <- broom::glance(model2)
 | Predictor | Estimate | SE | t-value | p-value |
 |-----------|----------|-----|---------|---------|
 | Intercept | `r round(model2_tidy$estimate[1], 3)` | `r round(model2_tidy$std.error[1], 3)` | `r round(model2_tidy$statistic[1], 2)` | `r format(model2_tidy$p.value[1], scientific = TRUE, digits = 4)` `r add_stars(model2_tidy$p.value[1])` |
-| CAg | `r round(model2_tidy$estimate[2], 3)` | `r round(model2_tidy$std.error[2], 3)` | `r round(model2_tidy$statistic[2], 2)` | `r format(model2_tidy$p.value[2], scientific = TRUE, digits = 4)` `r add_stars(model2_tidy$p.value[2])` |
-| CAi | `r round(model2_tidy$estimate[3], 3)` | `r round(model2_tidy$std.error[3], 3)` | `r round(model2_tidy$statistic[3], 2)` | `r format(model2_tidy$p.value[3], scientific = TRUE, digits = 4)` `r add_stars(model2_tidy$p.value[3])` |
+| CA_group | `r round(model2_tidy$estimate[2], 3)` | `r round(model2_tidy$std.error[2], 3)` | `r round(model2_tidy$statistic[2], 2)` | `r format(model2_tidy$p.value[2], scientific = TRUE, digits = 4)` `r add_stars(model2_tidy$p.value[2])` |
+| CA_interpersonal | `r round(model2_tidy$estimate[3], 3)` | `r round(model2_tidy$std.error[3], 3)` | `r round(model2_tidy$statistic[3], 2)` | `r format(model2_tidy$p.value[3], scientific = TRUE, digits = 4)` `r add_stars(model2_tidy$p.value[3])` |
+
+: Regression coefficients for Model 2 (CA_group + CA_interpersonal). Significance stars: * p < 0.05, ** p < 0.01, *** p < 0.001. {#tbl-model2}
 
 **Model Fit:** R² = `r round(model2_r2, 4)`, RMSE = `r round(model2_rmse, 4)`
+
+**Interpretation:** Model 2 separates communication apprehension into group (CA_group) and interpersonal (CA_interpersonal) dimensions. The R² value of `r round(model2_r2, 4)` shows that this model explains approximately `r round(model2_r2 * 100, 1)`% of the variance in public transportation use frequency. This represents a marginal improvement over Model 1 (ΔR² = `r round(model2_r2 - model1_r2, 4)`), suggesting that separating the two dimensions provides slightly better predictive accuracy but the improvement is minimal. The individual coefficients for CA_group and CA_interpersonal indicate their respective contributions to predicting transportation behavior.
 
 ### Model 3: Multiple Regression with Interaction (CAg + CAi + Interaction)
 
@@ -176,15 +196,21 @@ model3_glance <- broom::glance(model3)
 | Predictor | Estimate | SE | t-value | p-value |
 |-----------|----------|-----|---------|---------|
 | Intercept | `r round(model3_tidy$estimate[1], 3)` | `r round(model3_tidy$std.error[1], 3)` | `r round(model3_tidy$statistic[1], 2)` | `r format(model3_tidy$p.value[1], scientific = TRUE, digits = 4)` `r add_stars(model3_tidy$p.value[1])` |
-| CAg | `r round(model3_tidy$estimate[2], 3)` | `r round(model3_tidy$std.error[2], 3)` | `r round(model3_tidy$statistic[2], 2)` | `r format(model3_tidy$p.value[2], scientific = TRUE, digits = 4)` `r add_stars(model3_tidy$p.value[2])` |
-| CAi | `r round(model3_tidy$estimate[3], 3)` | `r round(model3_tidy$std.error[3], 3)` | `r round(model3_tidy$statistic[3], 2)` | `r format(model3_tidy$p.value[3], scientific = TRUE, digits = 4)` `r add_stars(model3_tidy$p.value[3])` |
-| CAg × CAi | `r round(model3_tidy$estimate[4], 3)` | `r round(model3_tidy$std.error[4], 3)` | `r round(model3_tidy$statistic[4], 2)` | `r format(model3_tidy$p.value[4], scientific = TRUE, digits = 4)` `r add_stars(model3_tidy$p.value[4])` |
+| CA_group | `r round(model3_tidy$estimate[2], 3)` | `r round(model3_tidy$std.error[2], 3)` | `r round(model3_tidy$statistic[2], 2)` | `r format(model3_tidy$p.value[2], scientific = TRUE, digits = 4)` `r add_stars(model3_tidy$p.value[2])` |
+| CA_interpersonal | `r round(model3_tidy$estimate[3], 3)` | `r round(model3_tidy$std.error[3], 3)` | `r round(model3_tidy$statistic[3], 2)` | `r format(model3_tidy$p.value[3], scientific = TRUE, digits = 4)` `r add_stars(model3_tidy$p.value[3])` |
+| CA_group × CA_interpersonal | `r round(model3_tidy$estimate[4], 3)` | `r round(model3_tidy$std.error[4], 3)` | `r round(model3_tidy$statistic[4], 2)` | `r format(model3_tidy$p.value[4], scientific = TRUE, digits = 4)` `r add_stars(model3_tidy$p.value[4])` |
+
+: Regression coefficients for Model 3 (CA_group + CA_interpersonal + Interaction). Significance stars: * p < 0.05, ** p < 0.01, *** p < 0.001. {#tbl-model3}
 
 **Model Fit:** R² = `r round(model3_r2, 4)`, RMSE = `r round(model3_rmse, 4)`
 
+**Interpretation:** Model 3 adds an interaction term between group and interpersonal communication apprehension. The R² value of `r round(model3_r2, 4)` indicates that this model explains approximately `r round(model3_r2 * 100, 1)`% of the variance in public transportation use frequency. The improvement over Model 2 is extremely small (ΔR² = `r round(model3_r2 - model2_r2, 4)`), suggesting that the interaction effect does not meaningfully improve predictive accuracy. The interaction coefficient tests whether the effect of one dimension depends on the level of the other, but the minimal improvement indicates that group and interpersonal communication apprehension likely have additive rather than multiplicative effects on transportation behavior.
+
 ## Visualization
 
-```{r visualization}
+```{r}
+#| label: fig-rmse-comparison
+#| fig-cap: "RMSE comparison across the three regression models. Lower RMSE indicates better predictive accuracy."
 # Create a comparison plot
 rmse_data <- model_comparison %>%
   mutate(Model = factor(Model, levels = Model))
@@ -205,13 +231,24 @@ ggplot(rmse_data, aes(x = Model, y = RMSE, fill = Model)) +
 
 ## Summary
 
-Analysis of `r sample_info$complete_cases` complete cases reveals that **`r model_comparison$Model[1]`** provides the best prediction of public transportation use frequency with the lowest RMSE of `r round(model_comparison$RMSE[1], 4)`. 
+Analysis of `r sample_info$complete_cases` complete cases reveals that **`r model_comparison$Model[1]`** provides the best prediction of public transportation use frequency with the lowest RMSE of `r round(model_comparison$RMSE[1], 4)`.
 
-- **Model 1 (CA12 only):** RMSE = `r round(model1_rmse, 4)`, R² = `r round(model1_r2, 4)`
-- **Model 2 (CAg + CAi):** RMSE = `r round(model2_rmse, 4)`, R² = `r round(model2_r2, 4)`  
-- **Model 3 (CAg + CAi + Interaction):** RMSE = `r round(model3_rmse, 4)`, R² = `r round(model3_r2, 4)`
+**Model Performance Summary:**
 
-The results suggest that using the total communication apprehension score (CA12) provides the most accurate prediction of public transportation use frequency compared to separating group and interpersonal apprehension or including their interaction.
+- **Model 1 (CA12 only):** RMSE = `r round(model1_rmse, 4)`, R² = `r round(model1_r2, 4)` (explains `r round(model1_r2 * 100, 1)`% of variance)
+- **Model 2 (CA_group + CA_interpersonal):** RMSE = `r round(model2_rmse, 4)`, R² = `r round(model2_r2, 4)` (explains `r round(model2_r2 * 100, 1)`% of variance)
+- **Model 3 (CA_group + CA_interpersonal + Interaction):** RMSE = `r round(model3_rmse, 4)`, R² = `r round(model3_r2, 4)` (explains `r round(model3_r2 * 100, 1)`% of variance)
+
+**Key Findings:**
+
+The results suggest that using the total communication apprehension score (CA12) provides the most accurate prediction of public transportation use frequency compared to separating group and interpersonal apprehension or including their interaction. The minimal improvements in R² and RMSE across models indicate that:
+
+1. Communication apprehension has a weak but statistically significant relationship with public transportation use
+2. Separating communication apprehension into group and interpersonal dimensions provides only marginal predictive improvement
+3. The interaction between group and interpersonal apprehension does not meaningfully enhance prediction accuracy
+4. The simpler Model 1 may be preferred due to its parsimony and comparable performance to more complex models
+
+The overall low R² values across all models (5-7%) suggest that communication apprehension alone explains only a small portion of the variance in public transportation use, indicating that other factors may be more important predictors of transportation behavior.
 
 # What questions or uncertainties remain?
 
