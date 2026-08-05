@@ -1,7 +1,8 @@
 ---
 title: "How communication apprehension and publication transportation ride share differ by country" 
 author: "Jingyi" 
-date: "July 30 2026"
+date: "August 5 2026"
+jupyter: python3
 format: 
   html:
     toc: true 
@@ -22,6 +23,195 @@ a visualization for "How communication apprehension and publication transportati
 2.  add 12 columns for CA
 
 3.  add 4 columns for PTRS(public transportation ride share)
+
+## workflow for generating the photo
+
+import three .csv files 
+```{python}
+import pandas as pd
+
+df_a = pd.read_csv("PRCAProlificExport_FileA.csv")
+df_b = pd.read_csv("PRCAProlificExport_FileB.csv")
+df_c = pd.read_csv("PRCAQualtricsExport_FileC.csv")
+
+# stick df_a and df_b
+df_1 = pd.concat([df_a, df_b], ignore_index=True)
+print(df_1)
+```
+
+```{python}
+# Merge the result with df_c using Q0 and participant id
+df = pd.merge(
+    df_1,
+    df_c,
+    left_on="Participant id",
+    right_on="Q0",
+    how="inner"
+)
+
+print(df.head())
+```
+
+save the merged file
+```{python}
+df.to_csv("merged_file.csv", index=False)
+```
+
+read into the merged file
+```{python}
+df = pd.read_csv("merged_file.csv")
+```
+
+```{python}
+## then code into numbers:
+
+agree_scale = {
+    "Strongly disagree": 1,
+    "Somewhat disagree": 2,
+    "Neither agree nor disagree": 3,
+    "Somewhat agree": 4,
+    "Strongly agree": 5
+}
+
+
+reverse_agree_scale = {
+    "Strongly disagree": 5,
+    "Somewhat disagree": 4,
+    "Neither agree nor disagree": 3,
+    "Somewhat agree": 2,
+    "Strongly agree": 1
+}
+
+# Coding for Q26 and Q28
+frequency_scale = {
+    "Never": 1,
+    "0-1 days a month": 2,
+    "2-4 days a month": 3,
+    "4-8 days a month": 4,
+    "8 or more days a month": 5
+}
+
+#
+scale_d = {
+    "1-2 rides in a typical day": 1,
+    "3-4 rides in a typical day": 2,
+    "5-6 rides in a typical day": 3,
+    "7 or more rides in a typical day": 4
+}
+
+# Columns using the normal agreement scale
+normal_cols = ["Q1", "Q3", "Q5", "Q13", "Q15", "Q18"]
+
+# Columns using the reverse agreement scale
+reverse_cols = ["Q2", "Q4", "Q6", "Q14", "Q16", "Q17"]
+
+cols_c = ["Q26", "Q28"]
+
+cols_d = ["Q27", "Q29"] 
+
+# Apply coding
+df[normal_cols] = df[normal_cols].replace(agree_scale)
+df[reverse_cols] = df[reverse_cols].replace(reverse_agree_scale)
+df[cols_c] = df[cols_c].replace(frequency_scale)
+df[cols_d] = df[cols_d].replace(scale_d)
+```
+
+
+```{python}
+df.head()
+```
+
+
+```{python}
+df["sum"] = (
+    df[normal_cols].sum(axis=1) +
+    df[reverse_cols].sum(axis=1)
+)
+
+df["PTRS"] = (
+    df[["Q26", "Q28"]].sum(axis=1) +
+    df[["Q27", "Q29"]].sum(axis=1)
+)
+```
+
+```{python}
+df.head()
+```
+
+
+```{python}
+import seaborn as sns
+import matplotlib.pyplot as plt
+```
+
+```{python}
+plot_df = df.melt(
+    id_vars="Country of residence",
+    value_vars=["sum", "PTRS"],
+    var_name="Score Type",
+    value_name="Score"
+)
+
+plt.figure(figsize=(10, 8))
+
+sns.violinplot(
+    data=plot_df,
+    y="Country of residence",
+    x="Score",
+    hue="Score Type",
+    split=False,
+    inner="box"
+)
+
+plt.title("How CA and PTRS Differ by Country of Residence")
+plt.ylabel("Country of residence")
+plt.xlabel("Score")
+
+plt.legend(title="Measure")
+plt.tight_layout()
+
+
+plt.savefig("figure.png", dpi=300, bbox_inches="tight")
+plt.show()
+```
+
+use only the first 4 countries
+```{python}
+countries_to_keep = [
+    "United States",
+    "United Kingdom",
+    "Ireland",
+    "Canada"
+]
+
+plot_df_filtered = plot_df[
+    plot_df["Country of residence"].isin(countries_to_keep)
+]
+```
+
+```{python}
+plt.figure(figsize=(10, 8))
+
+sns.violinplot(
+    data=plot_df_filtered,
+    y="Country of residence",
+    x="Score",
+    hue="Score Type",
+    split=False,
+    inner="box"
+)
+
+plt.title("How CA and PTRS Differ by Country of Residence")
+plt.ylabel("Country of residence")
+plt.xlabel("Score")
+
+plt.legend(title="Measure")
+plt.tight_layout()
+
+plt.savefig("figure_top4_countries.png", dpi=300, bbox_inches="tight")
+
+plt.show()
+```
 
 ## Viz
 
