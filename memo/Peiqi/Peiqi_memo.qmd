@@ -5,49 +5,244 @@ pdf-engine: xelatex
 date: 7/30/2026
 cache: false
 format:
-  pdf:
-    keep-tex: true
-    documentclass: article
-    papersize: letter
-    mainfont: Times New Roman
-    fontsize: 11pt
-
-    nclude-in-header:
-      text: |
-        \setkomafont{title}{\medium}
-        \pagenumbering{gobble}
-    geometry:
-      - top=0.5in
-      - left=1in
-      - right=1in
-      - bottom=1in
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+execute:
+  echo: true
+  warning: false
+jupyter: python3
 ---
 
-**Research Question:** What visual strategy best illustrates the relationship between communication apprehension and transportation use?
+## Research Or Analytical Question
+What visual strategy best illustrates the relationship between communication apprehension and transportation use?
 
 ## Answer, Response, + Summary of Results
 
 To explore the relationship between communication apprehension and transportation behavior, I created three scatterplots with fitted linear trend lines. Communication apprehension was calculated as the average score across twelve questionnaire items (Q1–Q6 and Q13–Q18) after reverse-coding the negatively worded items. Three transportation outcomes were examined: (1) Public transportation use, (2) Ride-share use, (3) Overall transportation use (public transportation use + ride-share use).
 
-### Figure 1. Communication Apprehension vs. Public Transportation Use
+```{python}
+#| label: setup
+import pandas as pd
+import numpy as np
+import statsmodels.formula.api as smf
+import matplotlib.pyplot as plt
+df = pd.read_csv("Summer2026DSHBData/PRCAQualtricsExport_FileC.csv")
+df = df.iloc[2:].copy()
+```
 
-![](communication_apprehension_public_transit.png){fig-align="center" width="70%"}
+```{python}
+#| label: data cleaning
+likert_map = {
+    "Strongly disagree": 1,
+    "Somewhat disagree": 2,
+    "Neither agree nor disagree": 3,
+    "Somewhat agree": 4,
+    "Strongly agree": 5
+}
+
+# Communication Apprehension items
+discussion_items = [
+    "Q1","Q2","Q3","Q4","Q5","Q6",
+    "Q13","Q14","Q15","Q16","Q17","Q18"
+]
+
+# Convert Likert responses to numeric
+for col in discussion_items:
+    df[col] = df[col].astype(str).str.strip()
+    df[col] = df[col].map(likert_map)
+
+# Reverse-coded items
+reverse_items = [
+    "Q2","Q4","Q6",
+    "Q14","Q16","Q18"
+]
+
+for col in reverse_items:
+    df[col] = 6 - df[col]
+
+# Composite communication apprehension score
+df["Apprehension"] = df[discussion_items].mean(axis=1)
+
+# Public transportation frequency
+days_map = {
+    "Never": 0,
+    "0-1 days a month": 1,
+    "2-4 days a month": 2,
+    "4-8 days a month": 3,
+    "8 or more days a month": 4
+}
+
+# Public transportation rides per day
+rides_map = {
+    "1-2 rides in a typical day": 1,
+    "3-4 rides in a typical day": 2,
+    "5-6 rides in a typical day": 3,
+    "7 or more rides in a typical day": 4
+}
+
+df["PublicTransit"] = (
+    df["Q26"].map(days_map) +
+    df["Q27"].map(rides_map)
+)
+days_map = {
+    "Never": 0,
+    "0-1 days a month": 1,
+    "2-4 days a month": 2,
+    "4-8 days a month": 3,
+    "8 or more days a month": 4
+}
+
+rides_map = {
+    "1-2 rides in a typical day": 1,
+    "3-4 rides in a typical day": 2,
+    "5-6 rides in a typical day": 3,
+    "7 or more rides in a typical day": 4
+}
+
+df["RideShare"] = (
+    df["Q28"].map(days_map) +
+    df["Q29"].map(rides_map)
+)
+df["TransportationUse"] = (df["PublicTransit"] + df["RideShare"])
+```
+
+```{python}
+#| label: fig-apprehension-transit
+#| fig-cap: "Communication apprehension vs. public transportation use, with fitted linear trend line."
+plot_df = df[["Apprehension", "PublicTransit"]].replace([np.inf, -np.inf], np.nan).dropna()
+
+plt.figure(figsize=(6,5))
+
+plt.scatter(
+    plot_df["Apprehension"],
+    plot_df["PublicTransit"],
+    alpha=0.6
+)
+
+coef = np.polyfit(
+    plot_df["Apprehension"],
+    plot_df["PublicTransit"],
+    1
+)
+
+x = np.linspace(
+    plot_df["Apprehension"].min(),
+    plot_df["Apprehension"].max(),
+    100
+)
+
+plt.plot(
+    x,
+    coef[0]*x + coef[1],
+    linewidth=2
+)
+
+plt.xlabel("Communication Apprehension")
+plt.ylabel("Public Transportation Use")
+plt.title("Communication Apprehension vs Public Transportation Use")
+
+plt.tight_layout()
+plt.savefig(
+    "communication_apprehension_public_transit.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
+```
 
 The scatterplot displays the relationship between communication apprehension and public transportation use. A fitted linear trend line summarizes the overall pattern in the data.
 
-------------------------------------------------------------------------
+```{python}
+#| label: fig-apprehension-rideshare
+#| fig-cap: "Communication apprehension vs. ride-share use, with fitted linear trend line."
+plot_df = df[["Apprehension", "RideShare"]].replace([np.inf, -np.inf], np.nan).dropna()
 
-### Figure 2. Communication Apprehension vs. Ride-share Use
+plt.figure(figsize=(6,5))
 
-![](communication_apprehension_Ride-share.png){fig-align="center" width="70%"}
+plt.scatter(
+    plot_df["Apprehension"],
+    plot_df["RideShare"],
+    alpha=0.6
+)
+
+coef = np.polyfit(
+    plot_df["Apprehension"],
+    plot_df["RideShare"],
+    1
+)
+
+x = np.linspace(
+    plot_df["Apprehension"].min(),
+    plot_df["Apprehension"].max(),
+    100
+)
+
+plt.plot(
+    x,
+    coef[0]*x + coef[1],
+    linewidth=2
+)
+
+plt.xlabel("Communication Apprehension")
+plt.ylabel("Ride-share Use")
+plt.title("Communication Apprehension vs Ride-share Use")
+
+plt.tight_layout()
+plt.savefig(
+    "communication_apprehension_Ride-share.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
+```
 
 The scatterplot suggests a weak negative relationship between communication apprehension and ride-share use. The fitted regression line slopes slightly downward, indicating that participants with higher communication apprehension tended to report somewhat lower ride-share use.
 
-------------------------------------------------------------------------
+```{python}
+#| label: fig-apprehension-overall
+#| fig-cap: "Communication apprehension vs. overall transportation use, with fitted linear trend line."
+plot_df = df[["Apprehension", "TransportationUse"]].replace([np.inf, -np.inf], np.nan).dropna()
 
-### Figure 3. Communication Apprehension vs. Overall Transportation Use
+plt.figure(figsize=(6,5))
 
-![](communication_apprehension_Transportation.png){fig-align="center" width="70%"}
+plt.scatter(
+    plot_df["Apprehension"],
+    plot_df["TransportationUse"],
+    alpha=0.6
+)
+
+coef = np.polyfit(
+    plot_df["Apprehension"],
+    plot_df["TransportationUse"],
+    1
+)
+
+x = np.linspace(
+    plot_df["Apprehension"].min(),
+    plot_df["Apprehension"].max(),
+    100
+)
+
+plt.plot(
+    x,
+    coef[0]*x + coef[1],
+    linewidth=2
+)
+
+plt.xlabel("Communication Apprehension")
+plt.ylabel("Overall Transportation Use")
+plt.title("Communication Apprehension vs Overall Transportation Use")
+
+plt.tight_layout()
+plt.savefig(
+    "communication_apprehension_Transportation.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+plt.show()
+```
 
 Overall transportation use also exhibits a weak negative relationship with communication apprehension. The fitted trend line indicates that participants with higher communication apprehension generally reported lower overall transportation use.
 
