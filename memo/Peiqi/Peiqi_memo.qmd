@@ -20,7 +20,7 @@ What visual strategy best illustrates the relationship between communication app
 
 ## Answer, Response, + Summary of Results
 
-To explore the relationship between communication apprehension and transportation behavior, I created three scatterplots with fitted linear trend lines. Communication apprehension was calculated as the average score across twelve questionnaire items (Q1–Q6 and Q13–Q18) after reverse-coding the negatively worded items. Three transportation outcomes were examined: (1) Public transportation use, (2) Ride-share use, (3) Overall transportation use (public transportation use + ride-share use).
+To explore the relationship between communication apprehension and transportation behavior, I created three scatterplots with fitted linear trend lines. Communication apprehension was calculated as the total score across twelve questionnaire items (Q1–Q6 and Q13–Q18) after reverse-coding the six items. Three transportation outcomes were examined: (1) Public transportation use, (2) Ride-share use, (3) Overall transportation use (public transportation use + ride-share use).
 
 ```{python}
 #| label: setup
@@ -56,14 +56,14 @@ for col in discussion_items:
 # Reverse-coded items
 reverse_items = [
     "Q2","Q4","Q6",
-    "Q14","Q16","Q18"
+    "Q14","Q16","Q17"
 ]
 
 for col in reverse_items:
     df[col] = 6 - df[col]
 
 # Composite communication apprehension score
-df["Apprehension"] = df[discussion_items].mean(axis=1)
+df["Apprehension"] = df[discussion_items].sum(axis=1)
 
 # Public transportation frequency
 days_map = {
