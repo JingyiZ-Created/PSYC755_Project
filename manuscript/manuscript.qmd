@@ -128,7 +128,7 @@ Direct answer: Levene's test supported equal variances (F = 0.963, p = .328); an
 
 ## 3.3 RQ3 (Peiqi): What visual strategy best illustrates the CA--transportation relationship?
 
-Method: This memo computed a mean communication-apprehension score across the 12 items (Q1--Q6, Q13--Q18) after reverse-coding Q2, Q4, Q6, Q14, Q16, and Q18, and combined the transportation frequency and rides-per-day items into three outcomes: public-transportation use (Q26+Q27), ride-share use (Q28+Q29), and overall transportation use (their sum). Three scatterplots, each with a fitted linear trend line, were produced to visualize the relationship between apprehension and each outcome.
+Method: This memo computed a total communication-apprehension score across the 12 items (Q1--Q6, Q13--Q18) after reverse-coding Q2, Q4, Q6, Q14, Q16, and Q17, and combined the transportation frequency and rides-per-day items into three outcomes: public-transportation use (Q26+Q27), ride-share use (Q28+Q29), and overall transportation use (their sum). Three scatterplots, each with a fitted linear trend line, were produced to visualize the relationship between apprehension and each outcome.
 
 ```{r}
 #| label: fig-li-public
